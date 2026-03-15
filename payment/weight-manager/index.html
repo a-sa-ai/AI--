@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen p-8">
+  <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+    <div class="p-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">体重管理アプリ</h1>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- 入力フォーム -->
+        <div>
+          <h2 class="text-xl font-semibold mb-4 text-gray-700">新規登録</h2>
+          <form id="weightForm" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">日付</label>
+              <input type="date" id="date"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                required>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">体重 (kg)</label>
+              <input type="number" id="weight" step="0.1"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                required>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">メモ</label>
+              <input type="text" id="memo"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+            </div>
+            <button type="submit"
+              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+              保存する
+            </button>
+          </form>
+          <div id="status" class="mt-2 text-sm text-green-600 hidden"></div>
+        </div>
+
+        <!-- サマリーとグラフ -->
+        <div>
+          <h2 class="text-xl font-semibold mb-4 text-gray-700">推移</h2>
+          <div class="bg-indigo-50 p-4 rounded-lg mb-4">
+            <p class="text-sm text-indigo-800">最新の体重</p>
+            <p class="text-3xl font-bold text-indigo-900" id="latestWeight">-- kg</p>
+          </div>
+
+          <!-- AI Analysis -->
+          <div class="mb-6">
+            <button id="analyzeBtn" type="button"
+              class="w-full flex justify-center items-center py-2 px-4 border border-indigo-200 rounded-md shadow-sm text-sm font-medium text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-indigo-500" viewBox="0 0 20 20"
+                fill="currentColor">
+                <path fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0 1 1 0 002 0zm-1 8a1 1 0 01-1-1v-2a1 1 0 112 0v2a1 1 0 01-1 1z"
+                  clip-rule="evenodd" />
+              </svg>
+              AIアドバイスをもらう
+            </button>
+            <div id="analysisResult"
+              class="mt-3 p-4 bg-yellow-50 rounded-md text-sm text-gray-700 hidden border border-yellow-100">
+              <!-- Analysis Content -->
+            </div>
+          </div>
+
+          <canvas id="weightChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 履歴テーブル -->
+      <div class="mt-12">
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">履歴</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日付</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体重</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">メモ</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody" class="bg-white divide-y divide-gray-200">
+              <!-- Data rows will be inserted here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let chartInstance = null;
+
+    // 初期化
+    window.onload = function () {
+      document.getElementById('date').valueAsDate = new Date();
+      loadData();
+    };
+
+    // フォーム送信処理
+    document.getElementById('weightForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const btn = this.querySelector('button');
+      const originalText = btn.textContent;
+      btn.textContent = '保存中...';
+      btn.disabled = true;
+
+      const date = document.getElementById('date').value;
+      const weight = document.getElementById('weight').value;
+      const memo = document.getElementById('memo').value;
+
+      google.script.run
+        .withSuccessHandler(function (response) {
+          document.getElementById('status').textContent = response;
+          document.getElementById('status').classList.remove('hidden');
+          document.getElementById('weight').value = '';
+          document.getElementById('memo').value = '';
+          btn.textContent = originalText;
+          btn.disabled = false;
+          loadData(); // データを再読み込み
+          setTimeout(() => {
+            document.getElementById('status').classList.add('hidden');
+          }, 3000);
+        })
+        .saveData(date, weight, memo);
+    });
+
+    // データ読み込み処理
+    function loadData() {
+      google.script.run
+        .withSuccessHandler(renderData)
+        .getData();
+    }
+
+    function renderData(data) {
+      if (!data || data.length === 0) return;
+
+      // 日付順に並べ替え
+      data.sort((a, b) => new Date(a[0]) - new Date(b[0]));
+
+      // グラフ更新
+      const ctx = document.getElementById('weightChart').getContext('2d');
+      const dates = data.map(row => new Date(row[0]).toLocaleDateString());
+      const weights = data.map(row => row[1]);
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: '体重 (kg)',
+            data: weights,
+            borderColor: 'rgb(79, 70, 229)',
+            tension: 0.1,
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: false
+            }
+          }
+        }
+      });
+
+      // 最新の体重を更新
+      const lastEntry = data[data.length - 1];
+      document.getElementById('latestWeight').textContent = `${lastEntry[1]} kg`;
+
+      // 履歴テーブル更新
+      const tbody = document.getElementById('historyBody');
+      tbody.innerHTML = '';
+      // 最新のデータを上に表示
+      [...data].reverse().forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(row[0]).toLocaleDateString()}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${row[1]} kg</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${row[2]}</td>
+          `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // AI Analysis
+    document.getElementById('analyzeBtn').addEventListener('click', function () {
+      const btn = this;
+      const resultDiv = document.getElementById('analysisResult');
+
+      btn.disabled = true;
+      btn.textContent = '分析中...';
+      resultDiv.classList.add('hidden');
+      resultDiv.textContent = '';
+
+      google.script.run
+        .withSuccessHandler(function (response) {
+          btn.disabled = false;
+          btn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0 1 1 0 002 0zm-1 8a1 1 0 01-1-1v-2a1 1 0 112 0v2a1 1 0 01-1 1z" clip-rule="evenodd" />
+                </svg>
+                AIアドバイスをもらう`;
+
+          resultDiv.innerHTML = '<strong>🤖 AIからのアドバイス:</strong><br>' + response.replace(/\n/g, '<br>');
+          resultDiv.classList.remove('hidden');
+        })
+        .withFailureHandler(function (error) {
+          btn.disabled = false;
+          btn.textContent = 'AIアドバイスをもらう';
+          alert('エラーが発生しました: ' + error);
+        })
+        .analyzeData();
+    });
+  </script>
+</body>
+
+</html>

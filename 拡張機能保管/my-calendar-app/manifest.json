@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "My Daily Schedule",
+  "version": "1.0",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": ["identity"],
+  "oauth2": {
+    "client_id": "1023126762502-r11e1d37rgtpk1k17rofiad9rebqm906.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/calendar.readonly"]
+  }
+}

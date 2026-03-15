@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Mail AI Assistant",
+  "version": "1.0",
+  "icons": {
+    "16": "icon128.png",
+    "48": "icon128.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_title": "Mail AI Assistant"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "sidePanel"
+  ]
+}

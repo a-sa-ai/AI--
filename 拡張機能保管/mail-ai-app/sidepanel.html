@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body {
+        margin: 0; padding: 20px;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        background-color: #fffaf0; color: #444; line-height: 1.6;
+      }
+      .header h3 {
+        margin: 0 0 20px 0; font-size: 18px; color: #2d5a27;
+        border-bottom: 2px solid #8ebf86; padding-bottom: 10px;
+      }
+      .label { font-weight: bold; font-size: 13px; margin: 15px 0 8px 0; display: block; color: #666; }
+      
+      select, textarea {
+        width: 100%; border: 1px solid #ddd; border-radius: 10px;
+        padding: 10px; box-sizing: border-box; font-size: 14px;
+      }
+      textarea { height: 100px; resize: none; }
+      
+      .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+      button {
+        padding: 12px; border: none; border-radius: 10px; font-weight: bold;
+        cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px;
+      }
+      .btn-create { background-color: #8ebf86; color: white; }
+      .btn-fix { background-color: #7fb5e3; color: white; }
+      button:hover { opacity: 0.8; }
+      
+      /* 結果エリアとコピーボタン */
+      .result-wrapper { position: relative; }
+      .result-container {
+        background: white; border-radius: 12px; padding: 15px;
+        border: 1px solid #efe8d8; min-height: 120px; margin-bottom: 15px;
+      }
+      #result { font-size: 14px; white-space: pre-wrap; }
+      
+      #btn-copy {
+        position: absolute; top: 8px; right: 8px;
+        padding: 5px 10px; font-size: 11px; background: #eee;
+        color: #666; border-radius: 5px; width: auto;
+      }
+      
+      .chat-box { display: flex; gap: 8px; background: #f0f0f0; padding: 10px; border-radius: 12px; }
+      #chat-input { height: 40px; flex-grow: 1; border: 1px solid #ccc; }
+      #btn-chat { background-color: #555; color: white; width: 60px; font-size: 11px; }
+      
+      .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #aaa; }
+    </style>
+  </head>
+  <body>
+    <div class="header"><h3>✨ Mail AI Assistant</h3></div>
+    
+    <label class="label">✨ 文章のトーン</label>
+    <select id="tone-select">
+      <option value="標準的・丁寧">標準的・丁寧</option>
+      <option value="親しみやすい・温かい">親しみやすい・温かい</option>
+      <option value="厳粛・非常にフォーマル">厳粛・非常にフォーマル</option>
+      <option value="低姿勢・お詫び">低姿勢・お詫び</option>
+    </select>
+    
+    <label class="label">📝 メモ・下書き</label>
+    <textarea id="input" placeholder="例：明日の会議の時間を15時に変更"></textarea>
+    
+    <div class="button-group">
+      <button id="btn-draft" class="btn-create">📧 メール作成</button>
+      <button id="btn-fix" class="btn-fix">🪄 添削・校正</button>
+    </div>
+    
+    <label class="label">✨ AIからの提案</label>
+    <div class="result-wrapper">
+      <button id="btn-copy">📋 コピー</button>
+      <div class="result-container">
+        <div id="result">ここに結果が表示されます</div>
+      </div>
+    </div>
+    
+    <label class="label">💬 AIに修正を頼む</label>
+    <div class="chat-box">
+      <textarea id="chat-input" placeholder="もう少し短く、など"></textarea>
+      <button id="btn-chat">送信</button>
+    </div>
+    
+    <div class="footer">Designed by あーさ</div>
+    <script src="sidepanel.js"></script>
+  </body>
+</html>
