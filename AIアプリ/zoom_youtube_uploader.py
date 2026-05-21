@@ -1,9 +1,9 @@
 import os
 import json
-import time
 import re
 import subprocess
 from pathlib import Path
+from datetime import datetime
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -15,6 +15,7 @@ CONFIG_DIR = os.path.expanduser("~/.zoom_youtube")
 UPLOADED_LOG = os.path.join(CONFIG_DIR, "uploaded.json")
 TOKEN_FILE = os.path.join(CONFIG_DIR, "token_youtube.json")
 CREDENTIALS_FILE = os.path.join(CONFIG_DIR, "credentials.json")
+URL_LOG = os.path.expanduser("~/Documents/zoom_youtube_log.txt")
 
 SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
 
@@ -28,6 +29,27 @@ def notify(title, message):
         'osascript', '-e',
         f'display dialog "{message}" with title "{title}" buttons {{"OK"}} default button "OK"'
     ])
+
+
+def ask_text(title, prompt):
+    script = f'display dialog "{prompt}" with title "{title}" default answer "" buttons {{"キャンセル", "OK"}} default button "OK"'
+    result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True)
+    if result.returncode != 0:
+        return None
+    for part in result.stdout.split(','):
+        if 'text returned:' in part:
+            return part.replace('text returned:', '').strip()
+    return None
+
+
+def make_label(file_path):
+    folder = Path(file_path).parent.name
+    m = ZOOM_FOLDER_RE.match(folder)
+    if m:
+        date = m.group('date')
+        title = m.group('title').strip()
+        return f"{date} {title}" if title else date
+    return folder
 
 
 def load_uploaded_log() -> set:
@@ -75,7 +97,7 @@ def get_youtube_service():
             creds.refresh(Request())
         else:
             if not os.path.exists(CREDENTIALS_FILE):
-                notify("エラー", "credentials.json が見つかりません。\\n~/.zoom_youtube/ に置いてください。")
+                notify("エラー", "credentials.json が見つかりません。")
                 return None
             flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
             creds = flow.run_local_server(port=0)
@@ -108,6 +130,12 @@ def upload_file(youtube, file_path, title):
     return response.get('id')
 
 
+def save_url_log(title, url):
+    with open(URL_LOG, 'a') as f:
+        date = datetime.now().strftime('%Y-%m-%d %H:%M')
+        f.write(f"{date}  {title}\n{url}\n\n")
+
+
 def main():
     youtube = get_youtube_service()
     if not youtube:
@@ -120,17 +148,67 @@ def main():
         notify("Zoom録画アップロード", "新しいZoom録画はありません。")
         return
 
-    notify("Zoom録画アップロード", f"{len(new_files)}件の新しい録画をアップロードします。\\nOKを押すと開始します。")
+    lines = [f"{i+1}. {make_label(f)}" for i, f in enumerate(new_files)]
+    list_text = "\\n".join(lines)
+    prompt = (
+        f"新しい録画が{len(new_files)}件あります。\\n\\n"
+        f"{list_text}\\n\\n"
+        f"アップロード: 番号を入力（例: 1,3）または「全部」\\n"
+        f"スキップ（今後表示しない）: 番号の前に s（例: s1,s2）"
+    )
+
+    answer = ask_text("Zoom録画アップロード", prompt)
+
+    if answer is None:
+        return
+
+    answer = answer.strip()
+
+    upload_targets = []
+    skip_targets = []
+
+    if answer == "全部":
+        upload_targets = new_files
+    else:
+        for token in answer.split(','):
+            token = token.strip()
+            if token.startswith('s'):
+                try:
+                    idx = int(token[1:]) - 1
+                    if 0 <= idx < len(new_files):
+                        skip_targets.append(new_files[idx])
+                except ValueError:
+                    pass
+            else:
+                try:
+                    idx = int(token) - 1
+                    if 0 <= idx < len(new_files):
+                        upload_targets.append(new_files[idx])
+                except ValueError:
+                    pass
+
+    # スキップ対象を登録
+    for f in skip_targets:
+        uploaded.add(f)
+    if skip_targets:
+        save_uploaded_log(uploaded)
+
+    if not upload_targets:
+        if skip_targets:
+            notify("Zoom録画アップロード", f"{len(skip_targets)}件をスキップ登録しました。")
+        return
 
     urls = []
-    for i, file_path in enumerate(new_files):
+    for i, file_path in enumerate(upload_targets):
         title = folder_to_video_title(Path(file_path).parent.name)
-        print(f"({i+1}/{len(new_files)}) {title}")
+        notify("アップロード中...", f"({i+1}/{len(upload_targets)})\\n{title}\\n\\nしばらくお待ちください...")
         try:
             video_id = upload_file(youtube, file_path, title)
             uploaded.add(file_path)
             save_uploaded_log(uploaded)
-            urls.append(f"https://youtu.be/{video_id}")
+            url = f"https://youtu.be/{video_id}"
+            urls.append(url)
+            save_url_log(title, url)
         except Exception as e:
             notify("エラー", f"アップロード失敗:\\n{os.path.basename(file_path)}")
 
